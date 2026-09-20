@@ -772,12 +772,14 @@ async def get_weather(location: str = "Delhi"):
     try:
         weather_data = await _fetch_weather(location)
 
-        # Check for API error
+        # Check for API error, fallback to Delhi
         if weather_data["current"].get("cod") != 200:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Weather data not found for '{location}': {weather_data['current'].get('message', 'Unknown error')}"
-            )
+            weather_data = await _fetch_weather("Delhi")
+            if weather_data["current"].get("cod") != 200:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Weather data temporarily unavailable."
+                )
 
         today = _parse_current(weather_data["current"])
         forecast_3d = _parse_forecast_3d(weather_data["forecast"])

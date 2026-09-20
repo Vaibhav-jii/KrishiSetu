@@ -23,27 +23,69 @@ OWM_API_KEY = os.getenv("OPEN_WEATHERMAP_API_KEY") or os.getenv("OPENWEATHERMAP_
 OWM_BASE = "https://api.openweathermap.org/data/2.5"
 
 
+CITY_ALIASES = {
+    "ahemdabad": "Ahmedabad",
+    "ahmadabad": "Ahmedabad",
+    "amdavad": "Ahmedabad",
+    "banglore": "Bengaluru",
+    "bangalore": "Bengaluru",
+    "bengaluru": "Bengaluru",
+    "bombay": "Mumbai",
+    "calcutta": "Kolkata",
+    "madras": "Chennai",
+    "banaras": "Varanasi",
+    "benaras": "Varanasi",
+    "gurgaon": "Gurugram",
+    "baroda": "Vadodara",
+    "cochin": "Kochi",
+    "trivandrum": "Thiruvananthapuram",
+    "poona": "Pune",
+}
+
+
 async def _fetch_weather(location: str) -> dict:
     """
     Call OpenWeatherMap for current weather + 5-day forecast.
-    Location can be "City, State" format.
+    Handles typos, 'City, State' formats, and falls back gracefully.
     """
+    loc_clean = (location or "Delhi").strip()
+    loc_lower = loc_clean.lower()
+    
+    # Check common aliases
+    for alias, replacement in CITY_ALIASES.items():
+        if alias in loc_lower:
+            loc_clean = replacement
+            break
+
+    city_part = loc_clean.split(",")[0].strip()
+
+    search_queries = [
+        f"{loc_clean},IN",
+        f"{city_part},IN",
+        loc_clean,
+        city_part,
+        "Ahmedabad,IN" if "ahmed" in loc_lower or "ahem" in loc_lower else "Delhi,IN"
+    ]
+
     async with httpx.AsyncClient(timeout=15.0) as client:
-        # Current weather
-        current_resp = await client.get(
-            f"{OWM_BASE}/weather",
-            params={"q": f"{location},IN", "appid": OWM_API_KEY, "units": "metric"},
-        )
-        current_data = current_resp.json()
+        for q in search_queries:
+            try:
+                current_resp = await client.get(
+                    f"{OWM_BASE}/weather",
+                    params={"q": q, "appid": OWM_API_KEY, "units": "metric"},
+                )
+                current_data = current_resp.json()
+                if current_data.get("cod") == 200:
+                    forecast_resp = await client.get(
+                        f"{OWM_BASE}/forecast",
+                        params={"q": q, "appid": OWM_API_KEY, "units": "metric"},
+                    )
+                    forecast_data = forecast_resp.json()
+                    return {"current": current_data, "forecast": forecast_data}
+            except Exception:
+                continue
 
-        # 5-day / 3-hour forecast
-        forecast_resp = await client.get(
-            f"{OWM_BASE}/forecast",
-            params={"q": f"{location},IN", "appid": OWM_API_KEY, "units": "metric"},
-        )
-        forecast_data = forecast_resp.json()
-
-    return {"current": current_data, "forecast": forecast_data}
+    return {"current": {"cod": 404, "message": "City not found"}, "forecast": {}}
 
 
 def _parse_current(data: dict) -> WeatherForecastDay:

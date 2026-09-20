@@ -106,10 +106,19 @@ export async function fetchWeather(location = 'Delhi') {
 
   const response = await fetch(`${API_BASE_URL}/weather?location=${encodeURIComponent(location)}`);
   if (!response.ok) {
-    const errData = await response.json().catch(() => ({ detail: 'Weather fetch failed' }));
-    throw new Error(errData.detail || 'Failed to fetch weather');
+    let errDetail = 'Failed to fetch weather';
+    try {
+      const errData = await response.json();
+      if (errData && errData.detail) errDetail = errData.detail;
+    } catch (_) {}
+    throw new Error(errDetail);
   }
-  const data = await response.json();
+  let data;
+  try {
+    data = await response.json();
+  } catch (_) {
+    throw new Error('Could not parse weather response');
+  }
 
   // Normalize backend field names to what the frontend components expect.
   // For today: prefer temp_c (actual current temp from OWM main.temp).
