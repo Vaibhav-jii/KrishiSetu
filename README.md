@@ -33,39 +33,39 @@ flowchart TD
     classDef external fill:#F44336,stroke:#333,stroke-width:2px,color:white;
 
     %% Users
-    Farmer(("🧑‍🌾 Farmer (Voice/Web)"))
-    Admin(("👨‍💼 Admin Portal"))
+    Farmer(("Farmer (Voice/Web)"))
+    Admin(("Admin Portal"))
 
     %% AWS Frontend Hosting
     subgraph AWS_Frontend ["AWS Frontend Delivery"]
-        CF["🌐 Amazon CloudFront (CDN)"]:::aws
-        S3["🪣 Amazon S3 (Static React/Vite)"]:::aws
+        CF["Amazon CloudFront (CDN)"]:::aws
+        S3["Amazon S3 (Static React/Vite)"]:::aws
     end
 
     %% AWS Backend
     subgraph AWS_Backend ["AWS EC2 Backend Environment"]
-        FastAPI["⚡ FastAPI Server"]:::backend
+        FastAPI["FastAPI Server"]:::backend
         
-        subgraph LangGraph ["🧠 LangGraph Parallel Multi-Agent"]
-            Disease["🦠 Disease Agent"]:::agent
-            Market["💰 Market Agent"]:::agent
-            Weather["☁️ Weather Agent"]:::agent
-            Scheme["📜 Scheme Agent"]:::agent
+        subgraph LangGraph ["LangGraph Parallel Multi-Agent"]
+            Disease["Disease Agent"]:::agent
+            Market["Market Agent"]:::agent
+            Weather["Weather Agent"]:::agent
+            Scheme["Scheme Agent"]:::agent
         end
         
-        ReportAgent["📝 Report Synthesizer Agent"]:::agent
+        ReportAgent["Report Synthesizer Agent"]:::agent
     end
 
     %% Storage & Memory
     subgraph Storage ["Persistent Storage"]
-        EBS["💾 Amazon EBS (Attached Volume)"]:::aws
-        SQLite[("🗄️ SQLite WAL Database (Reports & Memory)")]:::db
-        S3_Obj["🪣 Amazon S3 (Images & Audio Objects)"]:::aws
+        EBS["Amazon EBS (Attached Volume)"]:::aws
+        SQLite[("SQLite WAL Database (Reports & Memory)")]:::db
+        S3_Obj["Amazon S3 (Images & Audio Objects)"]:::aws
     end
 
     %% External APIs
-    Sarvam["🗣️ Sarvam AI (STT / TTS)"]:::external
-    LLM["🤖 Gemini / Groq LLM"]:::external
+    Sarvam["Sarvam AI (STT / TTS)"]:::external
+    LLM["Gemini / Groq LLM"]:::external
 
     %% Connections
     Farmer <-->|HTTPS| CF
