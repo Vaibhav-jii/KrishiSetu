@@ -1013,55 +1013,83 @@ async def voice_chat(
     sarvam_key = os.getenv("SARVAM_API_KEY")
     
     if audio and hasattr(audio, "filename") and audio.filename:
-        # Read uploaded audio content
-        audio_content = await audio.read()
-        fname = audio.filename or "voice_query.webm"
-        ctype = audio.content_type or "audio/webm"
-        if "webm" in ctype and not fname.endswith(".webm"):
-            fname = "audio.webm"
-        elif "mp4" in ctype and not fname.endswith(".mp4"):
-            fname = "audio.mp4"
-        elif "wav" in ctype and not fname.endswith(".wav"):
-            fname = "audio.wav"
-        elif "." not in fname:
-            fname += ".webm"
-        
-        # Call Sarvam STT REST API
-        async with httpx.AsyncClient() as client:
-            try:
-                # Sarvam STT expects multipart form data
-                files = {"file": (fname, audio_content, ctype)}
-                data = {"model": "saaras:v3", "mode": "transcribe"}
-                headers = {"api-subscription-key": sarvam_key}
+        try:
+            # Read uploaded audio content
+            audio_content = await audio.read()
+            if len(audio_content) > 200:
+                fname = audio.filename or "voice_query.webm"
+                ctype = audio.content_type or "audio/webm"
+                if "webm" in ctype and not fname.endswith(".webm"):
+                    fname = "audio.webm"
+                elif "mp4" in ctype and not fname.endswith(".mp4"):
+                    fname = "audio.mp4"
+                elif "wav" in ctype and not fname.endswith(".wav"):
+                    fname = "audio.wav"
+                elif "." not in fname:
+                    fname += ".webm"
                 
-                response = await client.post(
-                    "https://api.sarvam.ai/speech-to-text",
-                    files=files,
-                    data=data,
-                    headers=headers,
-                    timeout=30.0
-                )
-                
-                if response.status_code == 200:
-                    query_text = response.json().get("transcript", "").strip()
-                else:
-                    raise HTTPException(
-                        status_code=response.status_code,
-                        detail=f"Sarvam STT failed: {response.text}"
+                # Call Sarvam STT REST API
+                async with httpx.AsyncClient() as client:
+                    files = {"file": (fname, audio_content, ctype)}
+                    data = {"model": "saaras:v3", "mode": "transcribe"}
+                    headers = {"api-subscription-key": sarvam_key}
+                    
+                    response = await client.post(
+                        "https://api.sarvam.ai/speech-to-text",
+                        files=files,
+                        data=data,
+                        headers=headers,
+                        timeout=30.0
                     )
-            except Exception as e:
-                raise HTTPException(status_code=500, detail=f"Sarvam STT connection error: {str(e)}")
-    elif text:
+                    
+                    if response.status_code == 200:
+                        query_text = response.json().get("transcript", "").strip()
+                    else:
+                        print(f"⚠️ Sarvam STT failed with {response.status_code}: {response.text}")
+        except Exception as e:
+            print(f"⚠️ Sarvam STT connection error: {e}")
+
+    # Fallback to text query if STT did not produce words
+    if not query_text and text:
         query_text = text.strip()
-    else:
-        raise HTTPException(status_code=400, detail="Either 'audio' or 'text' must be provided.")
         
     if not query_text:
+        fallback_msg = (
+            "I didn't catch that clearly. Please try speaking again or type your question."
+            if lang == "en"
+            else "मुझे आपकी आवाज़ साफ़ नहीं आई। कृपया दोबारा बोलें या अपना सवाल लिखें।"
+        )
+        # Synthesize voice response for fallback message so assistant responds audibly
+        fallback_audio = ""
+        try:
+            async with httpx.AsyncClient() as client:
+                tts_payload = {
+                    "text": fallback_msg,
+                    "speaker": "priya",
+                    "model": "bulbul:v3",
+                    "target_language_code": "hi-IN" if lang == "hi" else "en-IN"
+                }
+                tts_headers = {
+                    "api-subscription-key": sarvam_key,
+                    "Content-Type": "application/json"
+                }
+                tts_res = await client.post(
+                    "https://api.sarvam.ai/text-to-speech",
+                    json=tts_payload,
+                    headers=tts_headers,
+                    timeout=15.0
+                )
+                if tts_res.status_code == 200:
+                    audios = tts_res.json().get("audios", [])
+                    fallback_audio = audios[0] if audios else ""
+        except Exception as tts_e:
+            print(f"Fallback TTS error: {tts_e}")
+
         return {
             "success": True,
             "query": "",
-            "text_response": "I didn't hear anything. Please try speaking again." if lang == "en" else "मैंने कुछ नहीं सुना। कृपया फिर से बोलें।",
-            "audio_response": None
+            "text_response": fallback_msg,
+            "audio_response": fallback_audio or None
         }
 
     # 2. RAG Context Collection

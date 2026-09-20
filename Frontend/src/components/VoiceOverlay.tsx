@@ -41,6 +41,7 @@ export default function VoiceOverlay({ voiceOpen, setVoiceOpen, setActivePage, s
   const [recognitionSupported, setRecognitionSupported] = useState(true);
   
   const recognitionRef = useRef<any>(null);
+  const transcriptRef = useRef("");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -194,13 +195,15 @@ export default function VoiceOverlay({ voiceOpen, setVoiceOpen, setActivePage, s
     setPhase("thinking");
     
     try {
-      const response = await runVoiceChat(sessionId, audioBlob, textQuery, lang, pageContext);
+      const finalQuery = textQuery || transcriptRef.current || "";
+      const response = await runVoiceChat(sessionId, audioBlob, finalQuery, lang, pageContext);
       
       if (response && response.success) {
-        setReply(response.text_response);
+        const cleanReply = (response.text_response || "").replace(/kisan\s*mind/gi, "KrishiSetu");
+        setReply(cleanReply);
         
         // Check if there's any keyword matching route navigation
-        const queryText = response.query || textQuery;
+        const queryText = response.query || finalQuery;
         const lowerCmd = queryText.toLowerCase();
         const matchedRoute = ROUTES.find((r) => r.kw.some((k) => lowerCmd.includes(k)));
         if (matchedRoute) {
@@ -240,7 +243,7 @@ export default function VoiceOverlay({ voiceOpen, setVoiceOpen, setActivePage, s
         if (!isClosingRef.current) {
           startListening();
         }
-      }, 5000);
+      }, 4000);
     }
   };
 
@@ -248,6 +251,7 @@ export default function VoiceOverlay({ voiceOpen, setVoiceOpen, setActivePage, s
     cleanup();
     setPhase("listening");
     setTranscript("");
+    transcriptRef.current = "";
     setReply("");
     setTypedInput("");
     audioChunksRef.current = [];
@@ -268,10 +272,13 @@ export default function VoiceOverlay({ voiceOpen, setVoiceOpen, setActivePage, s
       };
       
       recorder.onstop = () => {
+        const textFallback = transcriptRef.current || "";
         if (audioChunksRef.current.length > 0) {
           const mimeType = mediaRecorderRef.current?.mimeType || "audio/webm";
           const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-          submitVoiceQuery(audioBlob);
+          submitVoiceQuery(audioBlob, textFallback);
+        } else if (textFallback) {
+          submitVoiceQuery(null, textFallback);
         }
       };
       
@@ -295,20 +302,21 @@ export default function VoiceOverlay({ voiceOpen, setVoiceOpen, setActivePage, s
             .map((r: any) => r[0].transcript)
             .join("");
           setTranscript(current);
+          transcriptRef.current = current;
           
           if (silenceTimeoutRef.current) {
             clearTimeout(silenceTimeoutRef.current);
           }
-          // If no speech for 2.2 seconds, trigger stop recording and submit
+          // If no speech for 2.0 seconds, trigger stop recording and submit
           silenceTimeoutRef.current = setTimeout(() => {
             if (isListeningRef.current) {
               stopListeningAndSubmit();
             }
-          }, 2200);
+          }, 2000);
         };
         
         rec.onend = () => {
-          if (isListeningRef.current && !transcript) {
+          if (isListeningRef.current && !transcriptRef.current) {
             try {
               rec.start();
             } catch (err) {}
@@ -340,6 +348,11 @@ export default function VoiceOverlay({ voiceOpen, setVoiceOpen, setActivePage, s
       try {
         mediaRecorderRef.current.stop();
       } catch (e) {}
+    } else {
+      const textFallback = transcriptRef.current || "";
+      if (textFallback) {
+        submitVoiceQuery(null, textFallback);
+      }
     }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
@@ -489,26 +502,22 @@ export default function VoiceOverlay({ voiceOpen, setVoiceOpen, setActivePage, s
 
               {showCaption && (
                 <div className="glass-box p-4 text-center min-h-[60px] flex flex-col items-center justify-center text-white">
-                  {recognitionSupported ? (
-                    <p className="text-sm">
-                      {transcript || t("speakNow")}
-                      <span className="animate-pulse ml-0.5">|</span>
-                    </p>
-                  ) : (
-                    /* Fallback Typing Input */
-                    <form onSubmit={handleTextSubmit} className="flex gap-2 w-full">
-                      <input
-                        type="text"
-                        value={typedInput}
-                        onChange={(e) => setTypedInput(e.target.value)}
-                        placeholder={lang === "hi" ? "अपना प्रश्न यहाँ टाइप करें..." : "Type your question here..."}
-                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#2ECC71]"
-                      />
-                      <button type="submit" className="bg-[#2ECC71] text-black p-2 rounded-xl active:scale-95 transition-transform">
-                        <Send size={14} />
-                      </button>
-                    </form>
-                  )}
+                  <p className="text-sm font-medium mb-2">
+                    {transcript || (phase === "listening" ? t("speakNow") : phase === "thinking" ? (lang === "hi" ? "सोच रहे हैं..." : "Thinking...") : "")}
+                    {phase === "listening" && <span className="animate-pulse ml-0.5">|</span>}
+                  </p>
+                  <form onSubmit={handleTextSubmit} className="flex gap-2 w-full mt-1">
+                    <input
+                      type="text"
+                      value={typedInput}
+                      onChange={(e) => setTypedInput(e.target.value)}
+                      placeholder={lang === "hi" ? "या फिर यहाँ टाइप करें..." : "Or type your question here..."}
+                      className="flex-1 bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-white/50 focus:outline-none focus:border-[#2ECC71]"
+                    />
+                    <button type="submit" className="bg-[#2ECC71] text-black px-3 py-2 rounded-xl active:scale-95 transition-transform font-medium text-xs flex items-center justify-center" title="Send">
+                      <Send size={14} />
+                    </button>
+                  </form>
                 </div>
               )}
               
