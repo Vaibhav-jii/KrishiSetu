@@ -1,0 +1,194 @@
+const CROP_STATES_MAP: Record<string, string[]> = {
+  "Apple": [
+    "Gujarat",
+    "Kerala",
+    "Madhya Pradesh",
+    "Punjab",
+    "Rajasthan",
+    "Uttar Pradesh",
+    "West Bengal"
+  ],
+  "Arhar (Tur/Red Gram)(Whole)": [
+    "Andhra Pradesh",
+    "Gujarat",
+    "Kerala",
+    "Madhya Pradesh",
+    "Rajasthan",
+    "Uttar Pradesh",
+    "West Bengal"
+  ],
+  "Bajra(Pearl Millet/Cumbu)": [
+    "Andhra Pradesh",
+    "Gujarat",
+    "Madhya Pradesh",
+    "Rajasthan",
+    "Uttar Pradesh"
+  ],
+  "Banana": [
+    "Madhya Pradesh",
+    "Punjab",
+    "Rajasthan",
+    "Uttar Pradesh",
+    "West Bengal"
+  ],
+  "Bhindi(Ladies Finger)": [
+    "Gujarat",
+    "Kerala",
+    "Madhya Pradesh",
+    "Punjab",
+    "Rajasthan",
+    "Uttar Pradesh",
+    "West Bengal"
+  ],
+  "Brinjal": [
+    "Andhra Pradesh",
+    "Gujarat",
+    "Kerala",
+    "Madhya Pradesh",
+    "Punjab",
+    "Rajasthan",
+    "Uttar Pradesh",
+    "West Bengal"
+  ],
+  "Cabbage": [
+    "Andhra Pradesh",
+    "Gujarat",
+    "Kerala",
+    "Madhya Pradesh",
+    "Punjab",
+    "Rajasthan",
+    "Uttar Pradesh",
+    "West Bengal"
+  ],
+  "Carrot": [
+    "Gujarat",
+    "Kerala",
+    "Madhya Pradesh",
+    "Punjab",
+    "Rajasthan",
+    "Uttar Pradesh",
+    "West Bengal"
+  ],
+  "Cauliflower": [
+    "Andhra Pradesh",
+    "Gujarat",
+    "Kerala",
+    "Madhya Pradesh",
+    "Punjab",
+    "Rajasthan",
+    "Uttar Pradesh",
+    "West Bengal"
+  ],
+  "Cotton": [
+    "Andhra Pradesh",
+    "Gujarat",
+    "Madhya Pradesh",
+    "Punjab",
+    "Rajasthan",
+    "Uttar Pradesh"
+  ],
+  "Garlic": [
+    "Gujarat",
+    "Kerala",
+    "Madhya Pradesh",
+    "Punjab",
+    "Rajasthan",
+    "Uttar Pradesh",
+    "West Bengal"
+  ],
+  "Ginger(Green)": [
+    "Gujarat",
+    "Kerala",
+    "Madhya Pradesh",
+    "Punjab",
+    "Rajasthan",
+    "Uttar Pradesh",
+    "West Bengal"
+  ],
+  "Green Chilli": [
+    "Andhra Pradesh",
+    "Gujarat",
+    "Kerala",
+    "Madhya Pradesh",
+    "Punjab",
+    "Rajasthan",
+    "Uttar Pradesh",
+    "West Bengal"
+  ],
+  "Green Gram (Moong)(Whole)": [
+    "Gujarat",
+    "Kerala",
+    "Madhya Pradesh",
+    "Punjab",
+    "Rajasthan",
+    "Uttar Pradesh"
+  ],
+  "Groundnut": [
+    "Andhra Pradesh",
+    "Gujarat",
+    "Madhya Pradesh",
+    "Rajasthan",
+    "Uttar Pradesh",
+    "West Bengal"
+  ],
+  "Gur(Jaggery)": [
+    "Andhra Pradesh",
+    "Madhya Pradesh",
+    "Rajasthan",
+    "Uttar Pradesh",
+    "West Bengal"
+  ],
+  "Jowar(Sorghum)": [
+    "Andhra Pradesh",
+    "Gujarat",
+    "Madhya Pradesh",
+    "Rajasthan",
+    "Uttar Pradesh"
+  ],
+  "Lentil (Masur)(Whole)": [
+    "Gujarat",
+    "Madhya Pradesh",
+    "Rajasthan",
+    "Uttar Pradesh",
+    "West Bengal"
+  ],
+  "Maize": [
+    "Andhra Pradesh",
+    "Gujarat",
+    "Madhya Pradesh",
+    "Punjab",
+    "Rajasthan",
+    "Uttar Pradesh"
+  ],
+  "Mango": [
+    "Andhra Pradesh",
+    "Gujarat",
+    "Kerala",
+    "Madhya Pradesh",
+    "Punjab",
+    "Rajasthan",
+    "Uttar Pradesh",
+    "West Bengal"
+  ],
+  "Mustard": [
+    "Gujarat",
+    "Madhya Pradesh",
+    "Punjab",
+    "Rajasthan",
+    "Uttar Pradesh",
+    "West Bengal"
+  ],
+  "Soyabean": [
+    "Andhra Pradesh",
+    "Gujarat",
+    "Madhya Pradesh",
+    "Rajasthan",
+    "Uttar Pradesh"
+  ],
+  "Wheat": [
+    "Punjab",
+    "Rajasthan",
+    "Uttar Pradesh",
+    "West Bengal"
+  ]
+};
