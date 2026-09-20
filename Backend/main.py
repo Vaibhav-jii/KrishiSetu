@@ -1,5 +1,5 @@
 """
-KisanMind FastAPI Backend
+KrishiSetu FastAPI Backend
 ━━━━━━━━━━━━━━━━━━━━━━━━━
 Production-grade AgriTech AI advisory system for Indian farmers.
 Multi-agent system using LangGraph with parallel execution.
@@ -39,7 +39,7 @@ from utils.email_client import send_email
 # ──────────────────────────────────────────────
 
 app = FastAPI(
-    title="KisanMind API",
+    title="KrishiSetu API",
     description="AI-powered agricultural advisory system for Indian farmers",
     version="1.0.0",
 )
@@ -67,7 +67,7 @@ async def create_advisory(
     user_id: Optional[int] = Form(None, description="Supabase user ID"),
 ):
     """
-    Run the full KisanMind multi-agent advisory pipeline.
+    Run the full KrishiSetu multi-agent advisory pipeline.
 
     Accepts multipart form data with optional crop image.
     Returns complete advisory report with disease analysis,
@@ -166,7 +166,7 @@ async def download_advisory_pdf(
             raise HTTPException(status_code=404, detail="PDF generation failed")
         return FileResponse(
             path=filepath,
-            filename=f"kisanmind_report_{session_id[:8]}.pdf",
+            filename=f"krishisetu_report_{session_id[:8]}.pdf",
             media_type="application/pdf"
         )
     except Exception as e:
@@ -541,8 +541,8 @@ async def forgot_password(req: ForgotPasswordRequest):
         sb.table("users").update({"password_hash": pw_hash}).eq("id", user_id).execute()
         
         # Send actual email
-        subject = "Your KisanMind Temporary Password"
-        body = f"Hello,\n\nYour temporary password is: {temp_password}\n\nPlease login and change it from the Settings page immediately.\n\nThanks,\nKisanMind Team"
+        subject = "Your KrishiSetu Temporary Password"
+        body = f"Hello,\n\nYour temporary password is: {temp_password}\n\nPlease login and change it from the Settings page immediately.\n\nThanks,\nKrishiSetu Team"
         
         send_email(to_email=req.email, subject=subject, body=body)
         
@@ -731,7 +731,7 @@ async def health_check():
 
     return {
         "status": "healthy",
-        "service": "KisanMind API",
+        "service": "KrishiSetu API",
         "version": "1.0.0",
         "llm_provider": provider_info,
     }
@@ -1137,7 +1137,7 @@ async def voice_chat(
     if page_context:
         page_ctx_section = f"\nCurrent session context from the app:\n{page_context}\n"
 
-    system_prompt = f"""You are KisanMind Voice Assistant, a friendly AI agricultural advisor speaking directly to a farmer.
+    system_prompt = f"""You are KrishiSetu Voice Assistant, a friendly AI agricultural advisor speaking directly to a farmer.
 Your response MUST be extremely brief (max 2-3 sentences), simple, conversational, and direct, suitable for speech synthesis.
 Do NOT use any markdown formatting (no bolding, no bullets, no lists, no headings, no asterisks).
 Answer the query based on the following context. If you don't know, keep it short and friendly.
@@ -1264,12 +1264,12 @@ async def transcribe_audio(
 # ──────────────────────────────────────────────
 
 class ReportChatRequest(BaseModel):
-    report_context: str
-    user_message: str
-    chat_history: str = ""
+    report_context: Optional[str] = ""
+    user_message: Optional[str] = ""
+    chat_history: Optional[str] = ""
     lang: str = "en"
     is_greeting: bool = False
-    user_id: int | None = None
+    user_id: Optional[Union[int, str]] = None
 
 
 @app.post("/chat/report")
@@ -1291,7 +1291,7 @@ async def chat_with_report(req: ReportChatRequest):
         else "Respond in clear, simple English."
     )
 
-    prompt = f"""You are KisanMind, an expert agricultural advisor chatbot.
+    prompt = f"""You are KrishiSetu, an expert agricultural advisor chatbot for Indian farmers.
 A farmer has just received the following crop advisory report and wants to ask follow-up questions about it.
 
 ── ADVISORY REPORT ──
@@ -1371,7 +1371,7 @@ async def chat_with_report_persistent(report_id: str, req: ReportChatRequest):
         if res.data:
             history_lines = []
             for row in res.data:
-                prefix = "Farmer" if row.get("role") == "user" else "KisanMind"
+                prefix = "Farmer" if row.get("role") == "user" else "KrishiSetu"
                 history_lines.append(f"{prefix}: {row.get('message', '')}")
             db_history = "\n".join(history_lines)
     except Exception:
@@ -1390,19 +1390,19 @@ async def chat_with_report_persistent(report_id: str, req: ReportChatRequest):
     )
 
     if req.is_greeting:
-        prompt = f"""You are KisanMind, an expert agricultural advisor chatbot.
+        prompt = f"""You are KrishiSetu, an expert agricultural advisor chatbot for Indian farmers.
 A farmer has just received the following crop advisory report.
 
 ── ADVISORY REPORT ──
 {req.report_context[:8000]}
 ── END REPORT ──
 
-Your task: The report was just generated. Give a brief, friendly greeting to the farmer (1-2 sentences), tell them you are here to answer any questions about the report, and end by asking exactly ONE proactive, specific follow-up question based on the report to get more context (e.g., if there's a disease, ask about recent rainfall or when they last irrigated). 
+Your task: The report was just generated. Give a brief, friendly greeting to the farmer (1-2 sentences) introducing yourself as KrishiSetu, tell them you are here to answer any questions about the report, and end by asking exactly ONE proactive, specific follow-up question based on the report to get more context (e.g., if there's a disease, ask about recent rainfall or when they last irrigated). 
 - {lang_instruction}
 - Do NOT answer any hypothetical questions, just greet and ask the follow-up question.
 """
     else:
-        prompt = f"""You are KisanMind, an expert agricultural advisor chatbot.
+        prompt = f"""You are KrishiSetu, an expert agricultural advisor chatbot for Indian farmers.
 A farmer has just received the following crop advisory report and wants to ask follow-up questions about it.
 
 ── ADVISORY REPORT ──

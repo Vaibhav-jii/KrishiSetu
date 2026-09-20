@@ -55,7 +55,7 @@ export default function CropAnalysisPage({ preloadedReport }: CropAnalysisPagePr
         if (data.success && data.messages && data.messages.length > 0) {
           const loaded: ChatMessage[] = data.messages.map((m: any) => ({
             role: m.role as "user" | "assistant",
-            text: m.text,
+            text: (m.text || "").replace(/kisan\s*mind/gi, "KrishiSetu"),
           }));
           setChatMessages(loaded);
           setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 200);
@@ -93,7 +93,8 @@ export default function CropAnalysisPage({ preloadedReport }: CropAnalysisPagePr
         setChatLoading(true);
         try {
           const res = await chatWithReport(reportText, "Generate greeting and follow up question", "", lang, sessionId, true);
-          setChatMessages([{ role: "assistant", text: res.reply }]);
+          const replyText = (res.reply || "").replace(/kisan\s*mind/gi, "KrishiSetu");
+          setChatMessages([{ role: "assistant", text: replyText }]);
         } catch (e) {
           console.error("Failed to generate initial greeting", e);
         } finally {
@@ -148,7 +149,8 @@ export default function CropAnalysisPage({ preloadedReport }: CropAnalysisPagePr
       const history = buildChatHistory();
       const reportId = getReportId();
       const res = await chatWithReport(getReportText(), message, history, lang, reportId);
-      setChatMessages([...newMessages, { role: "assistant", text: res.reply }]);
+      const replyText = (res.reply || "").replace(/kisan\s*mind/gi, "KrishiSetu");
+      setChatMessages([...newMessages, { role: "assistant", text: replyText }]);
     } catch (err: any) {
       setChatMessages([...newMessages, { role: "assistant", text: `Error: ${err.message}` }]);
     } finally {

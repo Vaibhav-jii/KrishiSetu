@@ -332,29 +332,50 @@ export async function chatWithReport(reportContext, userMessage, chatHistory = '
     userId = user.id || null;
   } catch (_) {}
 
-  const url = reportId
+  const payload = {
+    report_context: reportContext || '',
+    user_message: userMessage || '',
+    chat_history: chatHistory || '',
+    lang: lang || 'en',
+    is_greeting: isGreeting,
+    user_id: userId,
+  };
+
+  const primaryUrl = reportId
     ? `${API_BASE_URL}/chat/report/${encodeURIComponent(reportId)}`
     : `${API_BASE_URL}/chat/report`;
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      report_context: reportContext,
-      user_message: userMessage,
-      chat_history: chatHistory,
-      lang: lang,
-      is_greeting: isGreeting,
-      user_id: userId,
-    }),
-  });
+  try {
+    const response = await fetch(primaryUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
 
-  if (!response.ok) {
-    const errData = await response.json().catch(() => ({ detail: 'Chat failed' }));
-    throw new Error(errData.detail || 'Failed to get answer');
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch (netErr) {
+    console.warn("Primary chat endpoint network error, trying fallback:", netErr);
   }
 
-  return response.json();
+  // Fallback to generic chat endpoint if report-specific route encountered an issue
+  if (reportId) {
+    try {
+      const fallbackResponse = await fetch(`${API_BASE_URL}/chat/report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (fallbackResponse.ok) {
+        return await fallbackResponse.json();
+      }
+    } catch (fallbackErr) {
+      console.warn("Fallback chat endpoint error:", fallbackErr);
+    }
+  }
+
+  throw new Error('Failed to reach KrishiSetu advisory assistant. Please try again.');
 }
 
 /**

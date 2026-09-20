@@ -43,6 +43,12 @@ export default function App() {
   
   // Auth state
   const [authPhase, setAuthPhase] = useState<"landing" | "login" | "app" | "admin">(() => {
+    if (!localStorage.getItem("krishisetu_admin") && localStorage.getItem("kisanmind_admin")) {
+      localStorage.setItem("krishisetu_admin", localStorage.getItem("kisanmind_admin")!);
+    }
+    if (!localStorage.getItem("krishisetu_user") && localStorage.getItem("kisanmind_user")) {
+      localStorage.setItem("krishisetu_user", localStorage.getItem("kisanmind_user")!);
+    }
     if (localStorage.getItem("krishisetu_admin")) return "admin";
     if (localStorage.getItem("krishisetu_user")) return "app";
     return "landing";

@@ -31,7 +31,7 @@ def generate_pdf(markdown_text: str, session_id: str) -> str:
     os.makedirs(PDF_OUTPUT_DIR, exist_ok=True)
 
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    filename = f"kisanmind_report_{session_id[:8]}_{timestamp}.pdf"
+    filename = f"krishisetu_report_{session_id[:8]}_{timestamp}.pdf"
     filepath = os.path.join(PDF_OUTPUT_DIR, filename)
 
     doc = SimpleDocTemplate(

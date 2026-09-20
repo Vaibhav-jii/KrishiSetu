@@ -19,7 +19,14 @@ const STORAGE_KEY = "krishisetu_reports";
 
 function readAll(): ReportEntry[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    let raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      const legacy = localStorage.getItem("kisanmind_reports");
+      if (legacy) {
+        localStorage.setItem(STORAGE_KEY, legacy);
+        raw = legacy;
+      }
+    }
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -28,7 +35,14 @@ function readAll(): ReportEntry[] {
 
 export async function syncReportsFromBackend() {
   try {
-    const userJson = localStorage.getItem("krishisetu_user");
+    let userJson = localStorage.getItem("krishisetu_user");
+    if (!userJson) {
+      const legacyUser = localStorage.getItem("kisanmind_user");
+      if (legacyUser) {
+        localStorage.setItem("krishisetu_user", legacyUser);
+        userJson = legacyUser;
+      }
+    }
     let userId = null;
     if (userJson) {
       try {
