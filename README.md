@@ -23,37 +23,71 @@ Indian agriculture suffers from severe information asymmetry. Farmers often lack
 KrishiSetu is built on a highly scalable, asynchronous backend using **FastAPI**. It routes complex, multi-intent farmer queries to specialized autonomous agents that execute in parallel, aggregating their findings into a cohesive, localized report.
 
 ```mermaid
-graph TD
-    %% User Inputs
-    User([Farmer]) -->|Query, Crop, Location, Image| API[FastAPI Backend]
-    
-    %% Core Orchestration
-    subgraph Agentic Orchestration Layer
-        API --> LG{LangGraph Router}
-        LG -->|Image Analysis| DA[Disease Agent]
-        LG -->|Price Forecasting| MA[Market Agent]
-        LG -->|Live Web Crawl| SA[Scheme Agent]
-        LG -->|Meteorology| WA[Weather Agent]
+flowchart TD
+    %% Define Styles
+    classDef aws fill:#FF9900,stroke:#232F3E,stroke-width:2px,color:white;
+    classDef frontend fill:#61DAFB,stroke:#333,stroke-width:2px,color:black;
+    classDef backend fill:#3776AB,stroke:#333,stroke-width:2px,color:white;
+    classDef agent fill:#4CAF50,stroke:#333,stroke-width:2px,color:white;
+    classDef db fill:#8c7ae6,stroke:#333,stroke-width:2px,color:white;
+    classDef external fill:#F44336,stroke:#333,stroke-width:2px,color:white;
+
+    %% Users
+    Farmer(("🧑‍🌾 Farmer (Voice/Web)"))
+    Admin(("👨‍💼 Admin Portal"))
+
+    %% AWS Frontend Hosting
+    subgraph AWS_Frontend ["AWS Frontend Delivery"]
+        CF["🌐 Amazon CloudFront (CDN)"]:::aws
+        S3["🪣 Amazon S3 (Static React/Vite)"]:::aws
     end
-    
-    %% External Integrations & ML
-    subgraph External APIs & ML Models
-        DA -.->|Zero-Shot Vision| Gemini[Google Gemini Vision]
-        MA -.->|Time-Series ML| CatBoost[(CatBoost Price Model)]
-        SA -.->|RAG / Crawling| Tavily[Tavily Search API]
-        WA -.->|Forecast API| OWM[OpenWeatherMap]
+
+    %% AWS Backend
+    subgraph AWS_Backend ["AWS EC2 Backend Environment"]
+        FastAPI["⚡ FastAPI Server"]:::backend
+        
+        subgraph LangGraph ["🧠 LangGraph Parallel Multi-Agent"]
+            Disease["🦠 Disease Agent"]:::agent
+            Market["💰 Market Agent"]:::agent
+            Weather["☁️ Weather Agent"]:::agent
+            Scheme["📜 Scheme Agent"]:::agent
+        end
+        
+        ReportAgent["📝 Report Synthesizer Agent"]:::agent
     end
-    
-    %% Aggregation
-    subgraph Synthesis & Storage
-        DA & MA & SA & WA --> Report[Report Agent]
-        Report -->|LLM Synthesis| Groq[Groq Llama-3]
-        Groq --> FinalReport[Final Advisory PDF/Markdown]
-        FinalReport --> Chroma[(ChromaDB Long-Term Memory)]
+
+    %% Storage & Memory
+    subgraph Storage ["Persistent Storage"]
+        EBS["💾 Amazon EBS (Attached Volume)"]:::aws
+        SQLite[("🗄️ SQLite WAL Database (Reports & Memory)")]:::db
+        S3_Obj["🪣 Amazon S3 (Images & Audio Objects)"]:::aws
     end
+
+    %% External APIs
+    Sarvam["🗣️ Sarvam AI (STT / TTS)"]:::external
+    LLM["🤖 Gemini / Groq LLM"]:::external
+
+    %% Connections
+    Farmer <-->|HTTPS| CF
+    Admin <-->|HTTPS| CF
+    CF -->|Serves UI| S3
     
-    %% Return Output
-    FinalReport --> API
+    Farmer <-->|Voice/Audio| Sarvam
+    Farmer -->|API Requests| FastAPI
+    Admin -->|Fetches Analytics| FastAPI
+    
+    FastAPI -->|Routes request| Disease
+    FastAPI -->|Routes request| Market
+    FastAPI -->|Routes request| Weather
+    FastAPI -->|Routes request| Scheme
+    
+    Disease & Market & Weather & Scheme -->|Parallel Results| ReportAgent
+    ReportAgent <-->|Context & Generation| LLM
+    ReportAgent -->|Returns Final Report| FastAPI
+    
+    FastAPI <-->|Reads/Writes sub-millisecond| SQLite
+    SQLite --- EBS
+    FastAPI -->|Saves Media| S3_Obj
 ```
 
 ---
