@@ -1,5 +1,8 @@
 # 🌾 KrishiSetu — Intelligent AgriTech AI Assistant
 
+> **Live Application:** [bit.ly/KrishiSetu](https://bit.ly/KrishiSetu) *(or [https://d30p8t2z3uiz6g.cloudfront.net](https://d30p8t2z3uiz6g.cloudfront.net))*  
+> **Backend API Docs:** [http://15.252.238.217/docs](http://15.252.238.217/docs)
+
 KrishiSetu is a production-grade, multi-agent AI advisory system engineered specifically for Indian farmers. It leverages a parallelized **LangGraph** orchestration architecture, state-of-the-art **Retrieval-Augmented Generation (RAG)**, and advanced **Machine Learning** to democratize access to critical agricultural intelligence.
 
 ---
