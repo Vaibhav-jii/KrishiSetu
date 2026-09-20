@@ -79,14 +79,21 @@ def init_sqlite_db():
         );
         """)
 
-        # Seed default admin if none exists
-        cursor = conn.execute("SELECT COUNT(*) FROM admins WHERE email = 'admin@kisanmind.com'")
-        if cursor.fetchone()[0] == 0:
-            admin_pw_hash = hashlib.sha256("admin123".encode()).hexdigest()
-            conn.execute(
-                "INSERT INTO admins (name, email, password_hash, created_at) VALUES (?, ?, ?, ?)",
-                ("System Administrator", "admin@kisanmind.com", admin_pw_hash, datetime.utcnow().isoformat())
-            )
+        # Seed default admins if none exist
+        admin_emails = [
+            ("KrishiSetu Admin", "admin@krishisetu.com"),
+            ("KrishiMind Admin", "admin@krishimind.com"),
+            ("System Administrator", "admin@kisanmind.com"),
+            ("Admin", "admin")
+        ]
+        admin_pw_hash = hashlib.sha256("admin123".encode()).hexdigest()
+        for name, email in admin_emails:
+            cursor = conn.execute("SELECT COUNT(*) FROM admins WHERE email = ?", (email,))
+            if cursor.fetchone()[0] == 0:
+                conn.execute(
+                    "INSERT INTO admins (name, email, password_hash, created_at) VALUES (?, ?, ?, ?)",
+                    (name, email, admin_pw_hash, datetime.utcnow().isoformat())
+                )
         conn.commit()
 
 
