@@ -24,12 +24,28 @@ load_dotenv(override=True)
 # ──────────────────────────────────────────────
 
 DEFAULT_MODELS = {
-    "gemini": "gemini-2.5-flash",
-    "groq": "llama-3.3-70b-versatile",
+    "gemini": "gemini-flash-latest",
+    "groq": "openai/gpt-oss-120b",
     "ollama": "llama3",
     "openrouter": "google/gemma-3-4b-it:free",
     "openai": "gpt-4o-mini",
 }
+
+
+def extract_text_content(content) -> str:
+    """Safely extract plain text from LLM response content (str or list)."""
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        parts = []
+        for part in content:
+            if isinstance(part, str):
+                parts.append(part)
+            elif isinstance(part, dict) and "text" in part:
+                parts.append(part["text"])
+        return "".join(parts).strip()
+    return str(content).strip()
+
 
 
 # ──────────────────────────────────────────────
@@ -111,11 +127,26 @@ class LLMManager:
 
         if self._provider == "gemini":
             from langchain_google_genai import ChatGoogleGenerativeAI
-            self._llm_instance = ChatGoogleGenerativeAI(
+            primary = ChatGoogleGenerativeAI(
                 model=model,
                 google_api_key=key,
                 temperature=0.3,
+                max_retries=1,
             )
+            groq_key = self._api_keys.get("groq")
+            if groq_key:
+                try:
+                    from langchain_groq import ChatGroq
+                    fallback = ChatGroq(
+                        model=DEFAULT_MODELS["groq"],
+                        groq_api_key=groq_key,
+                        temperature=0.3,
+                    )
+                    self._llm_instance = primary.with_fallbacks([fallback])
+                except Exception:
+                    self._llm_instance = primary
+            else:
+                self._llm_instance = primary
 
         elif self._provider == "groq":
             from langchain_groq import ChatGroq

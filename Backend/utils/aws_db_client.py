@@ -149,6 +149,12 @@ class QueryBuilder:
         self._params.append(value)
         return self
 
+    def is_null_or_eq(self, column: str, value: Any):
+        self._where_clauses.append(f'("{column}" = ? OR "{column}" IS NULL)')
+        self._params.append(value)
+        return self
+
+
     def in_(self, column: str, values: List[Any]):
         if not values:
             self._where_clauses.append("1=0")

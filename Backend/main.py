@@ -29,7 +29,7 @@ from graph.pipeline import run_pipeline
 from memory.long_term import get_history, save_report, search_similar
 from models.state import create_initial_state
 from utils.image_handler import upload_to_base64, validate_image_size
-from utils.llm_provider import get_llm, get_provider_info
+from utils.llm_provider import get_llm, get_provider_info, extract_text_content
 from utils.pdf_generator import generate_pdf
 from utils.supabase_client import get_supabase
 from utils.email_client import send_email
@@ -178,35 +178,44 @@ async def download_advisory_pdf(
 # ──────────────────────────────────────────────
 
 @app.get("/history/all")
-async def get_all_session_history(user_id: Optional[int] = None):
+async def get_all_session_history(user_id: Optional[Union[int, str]] = None):
     """
-    Retrieve past advisory reports from Supabase for a specific user.
-    Falls back to ChromaDB if no user_id is provided.
+    Retrieve past advisory reports from the SQLite database.
+    If user_id is provided, retrieves user's reports plus unassigned reports.
+    If user_id is None, retrieves all stored reports.
+    Falls back to ChromaDB only if the table is empty.
     """
     from memory.long_term import get_all_history
     try:
+        sb = get_supabase()
         if user_id:
-            sb = get_supabase()
-            res = sb.table("reports").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(50).execute()
-            
-            # Format to match existing ChromaDB response structure
-            history = []
-            for row in (res.data or []):
-                history.append({
-                    "id": row.get("session_id"),
-                    "document": row.get("report_markdown"),
-                    "metadata": {
-                        "session_id": row.get("session_id"),
-                        "crop": row.get("crop"),
-                        "location": row.get("location"),
-                        "query": row.get("query"),
-                        "saved_at": row.get("created_at")
-                    }
-                })
+            try:
+                uid = int(user_id)
+            except Exception:
+                uid = user_id
+            res = sb.table("reports").select("*").is_null_or_eq("user_id", uid).order("created_at", desc=True).limit(50).execute()
         else:
-            # Fallback to global ChromaDB
+            res = sb.table("reports").select("*").order("created_at", desc=True).limit(50).execute()
+
+        rows = res.data or []
+        history = []
+        for row in rows:
+            history.append({
+                "id": row.get("session_id"),
+                "document": row.get("report_markdown"),
+                "metadata": {
+                    "session_id": row.get("session_id"),
+                    "crop": row.get("crop"),
+                    "location": row.get("location"),
+                    "query": row.get("query"),
+                    "saved_at": row.get("created_at")
+                }
+            })
+
+        # Fallback to global ChromaDB if SQLite had 0 reports
+        if not history:
             history = get_all_history(limit=50)
-            
+
         return {
             "success": True,
             "total_reports": len(history),
@@ -219,10 +228,25 @@ async def get_all_session_history(user_id: Optional[int] = None):
 @app.get("/history/{session_id}")
 async def get_session_history(session_id: str):
     """
-    Retrieve all past advisory reports for a session from ChromaDB.
+    Retrieve past advisory report for a session from SQLite, falling back to ChromaDB.
     """
     try:
-        history = get_history(session_id)
+        sb = get_supabase()
+        res = sb.table("reports").select("*").eq("session_id", session_id).execute()
+        if res.data:
+            history = [{
+                "id": row.get("session_id"),
+                "document": row.get("report_markdown"),
+                "metadata": {
+                    "session_id": row.get("session_id"),
+                    "crop": row.get("crop"),
+                    "location": row.get("location"),
+                    "query": row.get("query"),
+                    "saved_at": row.get("created_at")
+                }
+            } for row in res.data]
+        else:
+            history = get_history(session_id)
         return {
             "success": True,
             "session_id": session_id,
@@ -231,6 +255,7 @@ async def get_session_history(session_id: str):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"History retrieval failed: {str(e)}")
+
 
 
 # ──────────────────────────────────────────────
@@ -845,7 +870,7 @@ Rules:
 - Return ONLY the JSON, no markdown fences
 """
         response = await llm.ainvoke(prompt)
-        raw = response.content.strip()
+        raw = extract_text_content(response.content)
 
         if raw.startswith("```"):
             raw = raw.split("\n", 1)[-1]
@@ -922,8 +947,8 @@ async def voice_greet(lang: str = "en"):
     sarvam_key = os.getenv("SARVAM_API_KEY")
 
     greetings = {
-        "hi": "नमस्ते! मैं किसानमाइंड हूँ। बताइए, मैं आपकी क्या मदद कर सकता हूँ?",
-        "en": "Hello! I am KisanMind, your farming assistant. How can I help you today?",
+        "hi": "नमस्ते! मैं कृषिसेतु हूँ। बताइए, मैं आपकी क्या मदद कर सकता हूँ?",
+        "en": "Hello! I am KrishiSetu, your farming assistant. How can I help you today?",
     }
     greeting_text = greetings.get(lang, greetings["en"])
 
@@ -933,7 +958,8 @@ async def voice_greet(lang: str = "en"):
             async with httpx.AsyncClient() as client:
                 tts_payload = {
                     "text": greeting_text,
-                    "speaker": "anushka",
+                    "speaker": "priya",
+                    "model": "bulbul:v3",
                     "target_language_code": "hi-IN" if lang == "hi" else "en-IN",
                 }
                 tts_headers = {
@@ -953,6 +979,7 @@ async def voice_greet(lang: str = "en"):
                     print(f"Sarvam TTS greeting failed: {tts_response.text}")
         except Exception as e:
             print(f"Sarvam TTS greeting error: {str(e)}")
+
 
     return {
         "success": True,
@@ -985,15 +1012,25 @@ async def voice_chat(
     query_text = ""
     sarvam_key = os.getenv("SARVAM_API_KEY")
     
-    if audio and audio.filename:
+    if audio and hasattr(audio, "filename") and audio.filename:
         # Read uploaded audio content
         audio_content = await audio.read()
+        fname = audio.filename or "voice_query.webm"
+        ctype = audio.content_type or "audio/webm"
+        if "webm" in ctype and not fname.endswith(".webm"):
+            fname = "audio.webm"
+        elif "mp4" in ctype and not fname.endswith(".mp4"):
+            fname = "audio.mp4"
+        elif "wav" in ctype and not fname.endswith(".wav"):
+            fname = "audio.wav"
+        elif "." not in fname:
+            fname += ".webm"
         
         # Call Sarvam STT REST API
         async with httpx.AsyncClient() as client:
             try:
                 # Sarvam STT expects multipart form data
-                files = {"file": (audio.filename or "audio.wav", audio_content, audio.content_type or "audio/wav")}
+                files = {"file": (fname, audio_content, ctype)}
                 data = {"model": "saaras:v3", "mode": "transcribe"}
                 headers = {"api-subscription-key": sarvam_key}
                 
@@ -1120,7 +1157,7 @@ Ensure natural conversational speech phrasing.
     
     try:
         response = await llm.ainvoke(system_prompt)
-        text_reply = response.content.strip()
+        text_reply = extract_text_content(response.content)
         # Clean any remaining markdown fences or headers
         text_reply = text_reply.replace("*", "").replace("#", "").replace("- ", "").strip()
     except Exception as e:
@@ -1132,7 +1169,8 @@ Ensure natural conversational speech phrasing.
         async with httpx.AsyncClient() as client:
             tts_payload = {
                 "text": text_reply,
-                "speaker": "anushka",
+                "speaker": "priya",
+                "model": "bulbul:v3",
                 "target_language_code": "hi-IN" if lang == "hi" else "en-IN"
             }
             tts_headers = {
@@ -1182,10 +1220,20 @@ async def transcribe_audio(
         raise HTTPException(status_code=500, detail="Sarvam API key not configured")
 
     audio_content = await audio.read()
+    fname = audio.filename or "transcribe.webm"
+    ctype = audio.content_type or "audio/webm"
+    if "webm" in ctype and not fname.endswith(".webm"):
+        fname = "audio.webm"
+    elif "mp4" in ctype and not fname.endswith(".mp4"):
+        fname = "audio.mp4"
+    elif "wav" in ctype and not fname.endswith(".wav"):
+        fname = "audio.wav"
+    elif "." not in fname:
+        fname += ".webm"
 
     async with httpx.AsyncClient() as client:
         try:
-            files = {"file": (audio.filename or "audio.wav", audio_content, audio.content_type or "audio/wav")}
+            files = {"file": (fname, audio_content, ctype)}
             data = {"model": "saaras:v3", "mode": "transcribe"}
             headers = {"api-subscription-key": sarvam_key}
 
@@ -1263,7 +1311,7 @@ Rules:
 
     try:
         response = await llm.ainvoke(prompt)
-        reply = response.content.strip()
+        reply = extract_text_content(response.content)
         return {"success": True, "reply": reply}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Chat failed: {str(e)}")
@@ -1374,7 +1422,7 @@ Rules:
 
     try:
         response = await llm.ainvoke(prompt)
-        reply = response.content.strip()
+        reply = extract_text_content(response.content)
 
         # Save messages to Supabase
         try:

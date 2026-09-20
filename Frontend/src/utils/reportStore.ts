@@ -29,23 +29,28 @@ function readAll(): ReportEntry[] {
 export async function syncReportsFromBackend() {
   try {
     const userJson = localStorage.getItem("krishisetu_user");
-    if (!userJson) return;
-    const user = JSON.parse(userJson);
-    const userId = user.id;
+    let userId = null;
+    if (userJson) {
+      try {
+        const user = JSON.parse(userJson);
+        userId = user.id;
+      } catch (e) {}
+    }
 
     // dynamically import to avoid circular dependency issues if any
     const api = await import("./api");
     const data = await api.getAllHistory(userId);
-    if (data && data.success && data.reports) {
-      const all: ReportEntry[] = [];
+    if (data && data.success && Array.isArray(data.reports)) {
+      const backendReports: ReportEntry[] = [];
       
       data.reports.forEach((row: any) => {
         const id = row.metadata?.session_id || row.id;
+        if (!id) return;
         // Extract summary from document
         const doc = row.document || "";
         const summaryText = doc.slice(0, 150) + "...";
         
-        all.push({
+        backendReports.push({
           id: id,
           crop: row.metadata?.crop || "Unknown",
           location: row.metadata?.location || "Unknown",
@@ -56,11 +61,25 @@ export async function syncReportsFromBackend() {
         });
       });
       
+      // MERGE with existing local reports so local reports NEVER vanish!
+      const existing = readAll();
+      const existingMap = new Map<string, ReportEntry>();
+
+      // Keep existing local reports first
+      existing.forEach((r) => {
+        if (r && r.id) existingMap.set(r.id, r);
+      });
+
+      // Overlay with backend reports
+      backendReports.forEach((r) => {
+        if (r && r.id) existingMap.set(r.id, r);
+      });
+
+      const merged = Array.from(existingMap.values());
       // Sort by date newest first
-      all.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       
-      // Overwrite local storage completely with backend truth
-      writeAll(all.slice(0, 50));
+      writeAll(merged.slice(0, 50));
     }
   } catch (err) {
     console.error("Failed to sync reports from backend", err);

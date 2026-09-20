@@ -250,7 +250,9 @@ export async function runVoiceChat(sessionId, audioBlob = null, text = '', lang 
   formData.append('lang', lang);
   
   if (audioBlob) {
-    formData.append('audio', audioBlob, 'voice_query.wav');
+    const type = audioBlob.type || 'audio/webm';
+    const ext = type.includes('mp4') ? 'mp4' : type.includes('ogg') ? 'ogg' : type.includes('wav') ? 'wav' : 'webm';
+    formData.append('audio', audioBlob, `voice_query.${ext}`);
   }
   if (text) {
     formData.append('text', text);
@@ -294,7 +296,9 @@ export async function fetchVoiceGreeting(lang = 'en') {
  */
 export async function transcribeAudio(audioBlob) {
   const formData = new FormData();
-  formData.append('audio', audioBlob, 'transcribe.wav');
+  const type = audioBlob.type || 'audio/webm';
+  const ext = type.includes('mp4') ? 'mp4' : type.includes('ogg') ? 'ogg' : type.includes('wav') ? 'wav' : 'webm';
+  formData.append('audio', audioBlob, `transcribe.${ext}`);
 
   const response = await fetch(`${API_BASE_URL}/transcribe`, {
     method: 'POST',

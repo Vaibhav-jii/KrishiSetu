@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from tavily import TavilyClient
 
 from models.state import KisanMindState, MarketResult
-from utils.llm_provider import get_llm
+from utils.llm_provider import get_llm, extract_text_content
 
 load_dotenv()
 
@@ -144,7 +144,8 @@ CRITICAL RULES:
 """
 
         response = await llm.ainvoke(prompt)
-        raw = response.content.strip()
+        raw = extract_text_content(response.content)
+
 
         # Strip markdown fences
         if raw.startswith("```"):

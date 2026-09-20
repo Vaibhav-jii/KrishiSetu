@@ -189,7 +189,8 @@ export default function CropAnalysisPage({ preloadedReport }: CropAnalysisPagePr
 
         if (audioChunksRef.current.length > 0) {
           setIsTranscribing(true);
-          const audioBlob = new Blob(audioChunksRef.current, { type: "audio/wav" });
+          const mimeType = mediaRecorderRef.current?.mimeType || "audio/webm";
+          const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
           try {
             const res = await transcribeAudio(audioBlob);
             if (res.transcript) {

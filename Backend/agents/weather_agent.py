@@ -15,7 +15,7 @@ import httpx
 from dotenv import load_dotenv
 
 from models.state import KisanMindState, WeatherForecastDay, WeatherResult
-from utils.llm_provider import get_llm
+from utils.llm_provider import get_llm, extract_text_content
 
 load_dotenv()
 
@@ -180,7 +180,8 @@ Return ONLY the JSON, no markdown fences.
 """
 
     response = await llm.ainvoke(prompt)
-    raw = response.content.strip()
+    raw = extract_text_content(response.content)
+
 
     # Strip markdown fences
     if raw.startswith("```"):

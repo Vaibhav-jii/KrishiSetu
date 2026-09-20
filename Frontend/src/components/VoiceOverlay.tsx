@@ -269,7 +269,8 @@ export default function VoiceOverlay({ voiceOpen, setVoiceOpen, setActivePage, s
       
       recorder.onstop = () => {
         if (audioChunksRef.current.length > 0) {
-          const audioBlob = new Blob(audioChunksRef.current, { type: "audio/wav" });
+          const mimeType = mediaRecorderRef.current?.mimeType || "audio/webm";
+          const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
           submitVoiceQuery(audioBlob);
         }
       };
